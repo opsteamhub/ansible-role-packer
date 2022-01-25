@@ -1,0 +1,38 @@
+- name: Install Unzip
+  yum:
+    name: ["unzip"]
+    state: latest
+
+- name: Download Packer
+  get_url:
+    url: https://releases.hashicorp.com/packer/1.7.8/packer_1.7.8_linux_amd64.zip 
+    dest: /tmp/packer.zip
+    mode: 0440
+
+- name: Decompress Packer
+  unarchive:
+    src: /tmp/packer.zip
+    dest: /usr/bin/
+
+- name:  "Create Workdir"
+  file:
+    path: ./builder
+    state: directory
+
+- name: Copy scripts
+  copy:
+    src: ./files/{{item}}
+    dest: ./builder/
+    mode: 0755
+  with_items:
+    - bootstrap.sh
+    - load_env_vars.sh
+
+- name: "Template Build"
+  template:
+    src:  build.json 
+    dest: ./builder/build.json
+    mode: 0600
+
+- name: "Run Packer"
+  command: /usr/bin/packer build ./builder/build.json

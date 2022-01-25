@@ -1,0 +1,74 @@
+{
+    "variables" : {
+        "region"          : "{{ansible_env.AWS_REGION}}",
+        "instance_type"   : "{{instance_type}}",
+        "ssh_username"    : "{{ssh_username}}",
+        "ami_name_prefix" : "{{ami_name_prefix}}",
+        "src_ami_filter"  : "{{src_ami_filter}}",
+        "tag_name_prefix" : "{{tag_name_prefix}}",
+        "tag_tool"        : "{{tag_tool}}",
+        "tag_author"      : "{{tag_author}}",
+        "env"             : "{{ansible_env.PACKER_VAR_env}}",
+        "stack_name"      : "{{ansible_env.PACKER_VAR_stack_name}}",
+        "volume_size_ebs" : "{{volume_size_ebs}}"
+    },
+
+{% raw %}
+
+    "builders" : [
+        {
+            "type"            : "amazon-ebs",
+            "region"          : "{{user `region`}}",
+            "instance_type"   : "{{user `instance_type`}}",
+            "ssh_username"    : "{{user `ssh_username`}}",
+            "ami_name"        : "{{user `stack_name`}}",
+            "ami_description" : "{{user `ami_prefix_name`}}-{{user `stack_name`}}",
+            "force_deregister" : "true",
+            "force_delete_snapshot" : "true",
+
+            "source_ami_filter": {
+                "filters": {
+                    "virtualization-type": "hvm",
+                    "name": "{{user `src_ami_filter`}}",
+                    "root-device-type": "ebs"
+                },
+                "most_recent": true,
+                "owners": ["self"]
+            },
+
+            "launch_block_device_mappings": [
+                {
+                  "device_name": "/dev/sda1",
+                  "volume_size": "{{user `volume_size_ebs`}}",
+                  "volume_type": "standard",
+                  "delete_on_termination": true
+                }
+              ],
+              
+	    "run_tags": {
+                "Name" : "{{user `tag_name_prefix`}}-{{user `stack_name`}}",
+                "Tool" : "{{user `tag_tool`}}",
+                "Author" :  "{{user `tag_author`}}"
+            }
+
+        }
+    ],
+    "provisioners" : [
+        {
+            "type": "shell-local",
+            "command": "./builder/load_env_vars.sh"
+        },	    
+  	{
+            "type": "file",
+            "source": "../ansible",
+            "destination": "/tmp/"
+        },
+
+        {
+            "type" : "shell",
+            "script" : "./builder/bootstrap.sh",
+    	    "environment_vars" : ["env={{user `env` }}"]
+        }
+    ]
+}
+{% endraw %}
